@@ -76,7 +76,12 @@ set %~2=!abs_path!
 exit /b 0
 :rlocation_end
 :: End of rlocation
-"""
+""".replace("\r\n", "\n").replace("\n", "\r\n")
+# NOTE: cmd.exe resolves `goto`/`call :label` by seeking through the batch file
+# by byte offset, and that scanner is unreliable on LF-only files (it reports
+# "cannot find the batch label specified"). The generated `.cmd` launcher must
+# therefore be entirely CRLF: the `.cmd.tpl` templates are pinned to CRLF via
+# .gitattributes, and this injected label body is normalized to CRLF here.
 
 def is_windows(ctx):
     windows_constraint = ctx.attr._windows_constraint[platform_common.ConstraintValueInfo]
@@ -95,14 +100,20 @@ def convert_env_to_script(ctx, env):
     environment = []
     if is_windows(ctx):
         export_command = "set"
+
+        # The generated `.cmd` launcher must be entirely CRLF so cmd.exe can seek
+        # batch labels reliably (see BATCH_RLOCATION_FUNCTION). Keep this injected
+        # block consistent with the CRLF templates.
+        newline = "\r\n"
     else:
         export_command = "export"
+        newline = "\n"
 
     for (name, value) in env.items():
         command = "{command} {name}={value}".format(command = export_command, name = name, value = value)
         environment.append(command)
 
-    return "\n".join(environment)
+    return newline.join(environment)
 
 def normalize_path(ctx, path):
     """Converts path to an OS-specific equivalent.

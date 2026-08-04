@@ -1,2 +1,8 @@
 # In code review, collapse generated files
 docs/*.md linguist-generated=true
+
+# Windows batch launchers are expanded verbatim into the generated `.cmd`
+# scripts. cmd.exe seeks `goto`/`call :label` targets by byte offset and fails
+# ("cannot find the batch label specified") on LF-only files, so these
+# templates must stay CRLF regardless of the checkout platform.
+ruby/private/**/*.cmd.tpl text eol=crlf
